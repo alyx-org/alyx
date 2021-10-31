@@ -16,6 +16,8 @@ jobs:
         git remote add origin $GITHUB_SERVER_URL/$GITHUB_REPOSITORY
         git fetch --depth=1 --update-head-ok origin +$GITHUB_REF:default
         git checkout
+    - name: toolchain
+      run: rustup update stable
     - name: version
       run: |
         rustc --version
