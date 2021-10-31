@@ -1,0 +1,14 @@
+[package]
+name = "alyx"
+version = "0.0.0"
+authors = ["alyx-org"]
+edition = "2021"
+rust-version = "1.56"
+description = "Alyx"
+documentation = "https://docs.rs/alyx"
+readme = "README.md"
+homepage = "https://github.com/alyx-org/alyx"
+repository = "https://github.com/alyx-org/alyx"
+license = "MIT"
+
+[dependencies]
