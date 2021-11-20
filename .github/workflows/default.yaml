@@ -2,7 +2,7 @@ name: default
 
 on:
   push:
-    branches: [default]
+    branches: [default, staging, tryings]
   pull_request:
     branches: [default]
 

@@ -1,0 +1,2 @@
+status = ["default"]
+delete_merged_branches = true
