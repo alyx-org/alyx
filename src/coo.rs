@@ -323,9 +323,9 @@ use std::mem::size_of;
 /// ```
 #[derive(Debug)]
 pub struct CooMat<T> {
-    rows: usize,
-    cols: usize,
-    entries: Vec<(usize, usize, T)>,
+    pub(crate) rows: usize,
+    pub(crate) cols: usize,
+    pub(crate) entries: Vec<(usize, usize, T)>,
 }
 
 impl<T> CooMat<T> {
