@@ -283,7 +283,8 @@ use std::mem::size_of;
 ///
 /// ## Iterators
 ///
-/// CooMat also provides convenient Iterators/IntoIterator:
+/// `CooMat` also provides convenient iterators (`Iter`, `IterMut` and
+/// `IntoIter`):
 ///
 /// ```
 /// # use alyx::CooMat;
@@ -332,8 +333,8 @@ impl<T> CooMat<T> {
     /// `(rows, cols)`.
     ///
     /// The created matrix has following properties:
-    /// - the matrix is empty
-    /// - the matrix capacity is `0`
+    /// - the matrix is empty (`matrix.len() == 0`)
+    /// - the matrix does **not** allocate memory (`matrix.capacity() == 0`)
     /// - the matrix will **not** allocate memory before any insert/push/extend
     ///   operation
     ///
@@ -375,9 +376,10 @@ impl<T> CooMat<T> {
     /// `(rows, cols)` and capacity.
     ///
     /// The created matrix has following properties:
-    /// - the matrix is empty
-    /// - the matrix capacity is `capacity`
-    /// - the matrix will allocate memory for at least `capacity` entries
+    /// - the matrix is empty (`matrix.len() == 0`)
+    /// - the matrix allocates memory for at least `capacity` entries
+    ///   (`matrix.capacity() >= capacity`)
+    /// - the matrix will not allocate if `capacity == 0`
     ///
     /// # Examples
     ///
@@ -395,6 +397,7 @@ impl<T> CooMat<T> {
     /// - `size_of::<T> == 0`
     /// - `rows == 0`
     /// - `cols == 0`
+    /// - the allocation size exceeds `isize::MAX` bytes
     pub fn with_capacity(rows: usize, cols: usize, capacity: usize) -> Self {
         assert!(size_of::<T>() != 0);
         assert!(rows > 0);
@@ -406,11 +409,12 @@ impl<T> CooMat<T> {
         }
     }
 
-    /// Creates a coordinate format sparse matrix with specified shape `(rows, cols)` and entries.
+    /// Creates a coordinate format sparse matrix with specified shape
+    /// `(rows, cols)` and entries.
     ///
     /// The created matrix has following properties:
     /// - the matrix is filled with `entries`
-    /// - the matrix capacity is at least `entries.len()`
+    /// - the matrix allocates memory for at least `entries.len()` entries
     ///
     /// # Examples
     ///
@@ -455,8 +459,13 @@ impl<T> CooMat<T> {
         }
     }
 
-    /// Creates a new sparse matrix with coordinate format and specified
-    /// capacity/entries.
+    /// Creates a coordinate format sparse matrix with specified shape
+    /// `(rows, cols)`, capacity and entries.
+    ///
+    /// The created matrix has following properties:
+    /// - the matrix is filled with `entries`
+    /// - the matrix allocates memory for at least
+    ///   `max(capacity, entries.len())` entries
     ///
     /// # Examples
     ///
@@ -464,9 +473,14 @@ impl<T> CooMat<T> {
     /// # use alyx::CooMat;
     /// let entries = vec![
     ///     (0, 0, 1.0),
-    ///     (1, 1, 1.0),
+    ///     (0, 1, 2.0),
+    ///     (1, 0, 3.0),
+    ///     (1, 1, 4.0),
     /// ];
-    /// let eye = CooMat::with_entries(2, 2, entries);
+    /// let matrix = CooMat::with_capacity_and_entries(2, 2, 4, entries);
+    /// assert_eq!(matrix.shape(), (2, 2));
+    /// assert_eq!(matrix.len(), 4);
+    /// assert_eq!(matrix.capacity(), 4);
     /// ```
     ///
     /// # Panics
@@ -476,6 +490,7 @@ impl<T> CooMat<T> {
     /// - `rows == 0`
     /// - `cols == 0`
     /// - for any entry `(row, col, val)`: `row >= rows` or `col >= cols`
+    /// - the allocation size exceeds `isize::MAX` bytes
     pub fn with_capacity_and_entries(
         rows: usize,
         cols: usize,
@@ -504,7 +519,7 @@ impl<T> CooMat<T> {
     ///
     /// The created matrix has following properties:
     /// - the matrix is filled with `values.len()` entries
-    /// - the matrix capacity is at least `values.len()`
+    /// - the matrix allocates memory for at least `values.len()` entries
     ///
     /// # Examples
     ///
@@ -526,7 +541,7 @@ impl<T> CooMat<T> {
     /// - `rows == 0`
     /// - `cols == 0`
     /// - for any entry `(row, col, val)`: `row >= rows` or `col >= cols`
-    /// - `rowind`, `colind` and `values` length differ.
+    /// - `rowind`, `colind` and `values` length differ
     pub fn with_triplets(
         rows: usize,
         cols: usize,
@@ -562,7 +577,8 @@ impl<T> CooMat<T> {
     ///
     /// The created matrix has following properties:
     /// - the matrix is filled with `values.len()` entries
-    /// - the matrix capacity is at least `values.len()`
+    /// - the matrix allocates memory for at least
+    ///   `max(capacity, values.len())` entries
     ///
     /// # Examples
     ///
@@ -589,7 +605,8 @@ impl<T> CooMat<T> {
     /// - `rows == 0`
     /// - `cols == 0`
     /// - for any entry `(row, col, val)`: `row >= rows` or `col >= cols`
-    /// - `rowind`, `colind` and `values` length differ.
+    /// - `rowind`, `colind` and `values` length differ
+    /// - the allocation size exceeds `isize::MAX` bytes
     pub fn with_capacity_and_triplets(
         rows: usize,
         cols: usize,
@@ -727,11 +744,15 @@ impl<T> CooMat<T> {
     /// matrix.reserve(10);
     /// assert!(matrix.capacity() >= 10);
     /// ```
+    ///
+    /// # Panics
+    ///
+    /// Panics if the new allocation size exceeds `isize::MAX` bytes
     pub fn reserve(&mut self, additional: usize) {
         self.entries.reserve(additional)
     }
 
-    /// Shrink capacity.
+    /// Shrink matrix capacity.
     ///
     /// # Examples
     ///
@@ -768,8 +789,7 @@ impl<T> CooMat<T> {
     ///
     /// # Panics
     ///
-    /// Panics if:
-    /// `len > self.len()`
+    /// Panics if `len > self.len()`
     pub fn truncate(&mut self, len: usize) {
         assert!(len <= self.len());
         self.entries.truncate(len)
@@ -842,6 +862,7 @@ impl<T> CooMat<T> {
     /// Panics if:
     /// - `row >= self.rows`
     /// - `col >= self.cols`
+    /// - the new allocation size exceeds `isize::MAX` bytes
     pub fn push(&mut self, row: usize, col: usize, val: T) {
         assert!(row < self.rows);
         assert!(col < self.cols);
@@ -906,7 +927,7 @@ impl<T> CooMat<T> {
         self.entries.remove(index)
     }
 
-    /// An iterator visiting all entries of the matrix.
+    /// Returns an iterator visiting all entries of the matrix.
     /// The iterator element type is `(&'a usize, &'a usize, &'a T)`.
     ///
     /// # Examples
@@ -934,7 +955,7 @@ impl<T> CooMat<T> {
         }
     }
 
-    /// An iterator visiting all mutable entries of the matrix.
+    /// Returns an iterator visiting all mutable entries of the matrix.
     /// The iterator element type is `(&'a usize, &'a usize, &'a mut T)`.
     ///
     /// # Examples
@@ -1055,7 +1076,7 @@ impl<T> DoubleEndedIterator for IterMut<'_, T> {
 
 impl<T> ExactSizeIterator for IterMut<'_, T> {}
 
-/// An iterator that moves out of a matrix.
+/// An iterator that moves out of a coordinate sparse matrix.
 ///
 /// # Examples
 ///
