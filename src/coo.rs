@@ -828,6 +828,15 @@ impl<T> CooMat<T> {
 
     /// Push an entry into this matrix.
     ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use alyx::CooMat;
+    /// let mut matrix = CooMat::new(1, 1);
+    /// matrix.push(0, 0, 1.0);
+    /// assert_eq!(matrix.get(0), Some((&0, &0, &1.0)));
+    /// ```
+    ///
     /// # Panics
     ///
     /// Panics if:
@@ -840,11 +849,30 @@ impl<T> CooMat<T> {
     }
 
     /// Pop entry from the matrix.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use alyx::CooMat;
+    /// let entries = vec![(0, 0, 1.0)];
+    /// let mut matrix = CooMat::with_entries(1, 1, entries);
+    /// assert_eq!(matrix.pop(), Some((0, 0, 1.0)));
+    /// assert_eq!(matrix.pop(), None);
+    /// ```
     pub fn pop(&mut self) -> Option<(usize, usize, T)> {
         self.entries.pop()
     }
 
     /// Insert an entry into the matrix.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use alyx::CooMat;
+    /// let mut matrix = CooMat::new(1, 1);
+    /// matrix.insert(0, 0, 0, 1.0);
+    /// assert_eq!(matrix.get(0), Some((&0, &0, &1.0)));
+    /// ```
     ///
     /// # Panics
     ///
@@ -860,6 +888,15 @@ impl<T> CooMat<T> {
     }
 
     /// Remove an entry from the matrix.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use alyx::CooMat;
+    /// let entries = vec![(0, 0, 1.0)];
+    /// let mut matrix = CooMat::with_entries(1, 1, entries);
+    /// assert_eq!(matrix.remove(0), (0, 0, 1.0));
+    /// ```
     ///
     /// # Panics
     ///
