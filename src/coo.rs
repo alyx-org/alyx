@@ -913,6 +913,37 @@ impl<T> CooMat<T> {
         self.entries.insert(index, (row, col, val))
     }
 
+    /// Extend matrix entries.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use alyx::CooMat;
+    /// let entries = vec![
+    ///     (0, 0, 1.0),
+    ///     (0, 1, 2.0),
+    ///     (1, 0, 3.0),
+    ///     (1, 1, 4.0),
+    /// ];
+    /// let mut matrix: CooMat<f64> = CooMat::new(2, 2);
+    /// assert_eq!(matrix.len(), 0);
+    /// matrix.extend(entries);
+    /// assert_eq!(matrix.len(), 4);
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// Panics if:
+    /// - `row >= self.rows`
+    /// - `col >= self.cols`
+    pub fn extend<I: IntoIterator<Item = (usize, usize, T)>>(&mut self, iter: I) {
+        for (row, col, val) in iter {
+            assert!(row < self.rows);
+            assert!(col < self.cols);
+            self.entries.push((row, col, val));
+        }
+    }
+
     /// Remove an entry from the matrix.
     ///
     /// # Examples
@@ -990,31 +1021,6 @@ impl<T> CooMat<T> {
     pub fn iter_mut(&mut self) -> IterMut<T> {
         IterMut {
             inner: self.entries.iter_mut(),
-        }
-    }
-}
-
-impl<T> Extend<(usize, usize, T)> for CooMat<T> {
-    /// Extend matrix entries.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use alyx::CooMat;
-    /// let entries = vec![
-    ///     (0, 0, 1.0),
-    ///     (0, 1, 2.0),
-    ///     (1, 0, 3.0),
-    ///     (1, 1, 4.0),
-    /// ];
-    /// let mut matrix: CooMat<f64> = CooMat::new(2, 2);
-    /// assert_eq!(matrix.len(), 0);
-    /// matrix.extend(entries);
-    /// assert_eq!(matrix.len(), 4);
-    /// ```
-    fn extend<I: IntoIterator<Item = (usize, usize, T)>>(&mut self, iter: I) {
-        for (row, col, val) in iter {
-            self.push(row, col, val);
         }
     }
 }
