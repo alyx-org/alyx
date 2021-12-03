@@ -905,11 +905,11 @@ impl<T> CooMat<T> {
     /// Panics if:
     /// - `row >= self.rows`
     /// - `col >= self.cols`
-    /// - `index >= self.len()`
+    /// - `index > self.len()`
     pub fn insert(&mut self, index: usize, row: usize, col: usize, val: T) {
         assert!(row < self.rows);
         assert!(col < self.cols);
-        assert!(index < self.len());
+        assert!(index <= self.len());
         self.entries.insert(index, (row, col, val))
     }
 
