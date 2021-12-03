@@ -240,7 +240,7 @@ use std::mem::size_of;
 /// `CooMat` provides multiple methods to manage matrix capacity and length:
 ///
 /// ```
-/// use alyx::CooMat;
+/// # use alyx::CooMat;
 ///
 /// let mut matrix: CooMat<f64> = CooMat::new(2, 2);
 /// // Initially capacity and length are 0
@@ -286,7 +286,7 @@ use std::mem::size_of;
 /// CooMat also provides convenient Iterators/IntoIterator:
 ///
 /// ```
-/// use alyx::CooMat;
+/// # use alyx::CooMat;
 /// let entries = vec![
 ///     (0, 0, 1.0),
 ///     (0, 1, 2.0),
@@ -382,7 +382,7 @@ impl<T> CooMat<T> {
     /// # Examples
     ///
     /// ```
-    /// use alyx::CooMat;
+    /// # use alyx::CooMat;
     /// let matrix = CooMat::<f64>::with_capacity(2, 2, 4);
     /// assert_eq!(matrix.shape(), (2, 2));
     /// assert!(matrix.is_empty());
@@ -415,7 +415,7 @@ impl<T> CooMat<T> {
     /// # Examples
     ///
     /// ```
-    /// use alyx::CooMat;
+    /// # use alyx::CooMat;
     /// let entries = vec![
     ///     (0, 0, 1.0),
     ///     (0, 1, 2.0),
