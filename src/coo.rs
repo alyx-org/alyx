@@ -555,16 +555,21 @@ impl<T> CooMat<T> {
         let mut rowind = rowind.into_iter();
         let mut colind = colind.into_iter();
         let values = values.into_iter();
-        let mut entries = Vec::with_capacity(values.size_hint().0);
+        let capacity = match values.size_hint() {
+            (_, Some(high)) => high,
+            (low, None) => low,
+        };
+        let mut entries = Vec::with_capacity(capacity);
         for value in values {
-            let row = rowind.next().expect("invalid matrix");
-            let col = colind.next().expect("invalid matrix");
+            let row = rowind.next().unwrap();
+            let col = colind.next().unwrap();
             assert!(row < rows);
             assert!(col < cols);
             entries.push((row, col, value));
         }
         assert!(rowind.next().is_none());
         assert!(colind.next().is_none());
+        entries.shrink_to_fit();
         CooMat {
             rows,
             cols,
