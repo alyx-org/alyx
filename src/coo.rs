@@ -240,7 +240,7 @@ use std::mem::size_of;
 /// `CooMat` provides multiple methods to manage matrix capacity and length:
 ///
 /// ```
-/// use alyx::CooMat;
+/// # use alyx::CooMat;
 ///
 /// let mut matrix: CooMat<f64> = CooMat::new(2, 2);
 /// // Initially capacity and length are 0
@@ -283,10 +283,11 @@ use std::mem::size_of;
 ///
 /// ## Iterators
 ///
-/// CooMat also provides convenient Iterators/IntoIterator:
+/// `CooMat` also provides convenient iterators (`Iter`, `IterMut` and
+/// `IntoIter`):
 ///
 /// ```
-/// use alyx::CooMat;
+/// # use alyx::CooMat;
 /// let entries = vec![
 ///     (0, 0, 1.0),
 ///     (0, 1, 2.0),
@@ -322,9 +323,9 @@ use std::mem::size_of;
 /// ```
 #[derive(Debug)]
 pub struct CooMat<T> {
-    rows: usize,
-    cols: usize,
-    entries: Vec<(usize, usize, T)>,
+    pub(crate) rows: usize,
+    pub(crate) cols: usize,
+    pub(crate) entries: Vec<(usize, usize, T)>,
 }
 
 impl<T> CooMat<T> {
@@ -332,8 +333,8 @@ impl<T> CooMat<T> {
     /// `(rows, cols)`.
     ///
     /// The created matrix has following properties:
-    /// - the matrix is empty
-    /// - the matrix capacity is `0`
+    /// - the matrix is empty (`matrix.len() == 0`)
+    /// - the matrix does **not** allocate memory (`matrix.capacity() == 0`)
     /// - the matrix will **not** allocate memory before any insert/push/extend
     ///   operation
     ///
@@ -375,14 +376,15 @@ impl<T> CooMat<T> {
     /// `(rows, cols)` and capacity.
     ///
     /// The created matrix has following properties:
-    /// - the matrix is empty
-    /// - the matrix capacity is `capacity`
-    /// - the matrix will allocate memory for at least `capacity` entries
+    /// - the matrix is empty (`matrix.len() == 0`)
+    /// - the matrix allocates memory for at least `capacity` entries
+    ///   (`matrix.capacity() >= capacity`)
+    /// - the matrix will not allocate if `capacity == 0`
     ///
     /// # Examples
     ///
     /// ```
-    /// use alyx::CooMat;
+    /// # use alyx::CooMat;
     /// let matrix = CooMat::<f64>::with_capacity(2, 2, 4);
     /// assert_eq!(matrix.shape(), (2, 2));
     /// assert!(matrix.is_empty());
@@ -395,6 +397,7 @@ impl<T> CooMat<T> {
     /// - `size_of::<T> == 0`
     /// - `rows == 0`
     /// - `cols == 0`
+    /// - the allocation size exceeds `isize::MAX` bytes
     pub fn with_capacity(rows: usize, cols: usize, capacity: usize) -> Self {
         assert!(size_of::<T>() != 0);
         assert!(rows > 0);
@@ -406,16 +409,17 @@ impl<T> CooMat<T> {
         }
     }
 
-    /// Creates a coordinate format sparse matrix with specified shape `(rows, cols)` and entries.
+    /// Creates a coordinate format sparse matrix with specified shape
+    /// `(rows, cols)` and entries.
     ///
     /// The created matrix has following properties:
     /// - the matrix is filled with `entries`
-    /// - the matrix capacity is at least `entries.len()`
+    /// - the matrix allocates memory for at least `entries.len()` entries
     ///
     /// # Examples
     ///
     /// ```
-    /// use alyx::CooMat;
+    /// # use alyx::CooMat;
     /// let entries = vec![
     ///     (0, 0, 1.0),
     ///     (0, 1, 2.0),
@@ -455,8 +459,13 @@ impl<T> CooMat<T> {
         }
     }
 
-    /// Creates a new sparse matrix with coordinate format and specified
-    /// capacity/entries.
+    /// Creates a coordinate format sparse matrix with specified shape
+    /// `(rows, cols)`, capacity and entries.
+    ///
+    /// The created matrix has following properties:
+    /// - the matrix is filled with `entries`
+    /// - the matrix allocates memory for at least
+    ///   `max(capacity, entries.len())` entries
     ///
     /// # Examples
     ///
@@ -464,9 +473,14 @@ impl<T> CooMat<T> {
     /// # use alyx::CooMat;
     /// let entries = vec![
     ///     (0, 0, 1.0),
-    ///     (1, 1, 1.0),
+    ///     (0, 1, 2.0),
+    ///     (1, 0, 3.0),
+    ///     (1, 1, 4.0),
     /// ];
-    /// let eye = CooMat::with_entries(2, 2, entries);
+    /// let matrix = CooMat::with_capacity_and_entries(2, 2, 4, entries);
+    /// assert_eq!(matrix.shape(), (2, 2));
+    /// assert_eq!(matrix.len(), 4);
+    /// assert_eq!(matrix.capacity(), 4);
     /// ```
     ///
     /// # Panics
@@ -476,6 +490,7 @@ impl<T> CooMat<T> {
     /// - `rows == 0`
     /// - `cols == 0`
     /// - for any entry `(row, col, val)`: `row >= rows` or `col >= cols`
+    /// - the allocation size exceeds `isize::MAX` bytes
     pub fn with_capacity_and_entries(
         rows: usize,
         cols: usize,
@@ -504,7 +519,7 @@ impl<T> CooMat<T> {
     ///
     /// The created matrix has following properties:
     /// - the matrix is filled with `values.len()` entries
-    /// - the matrix capacity is at least `values.len()`
+    /// - the matrix allocates memory for at least `values.len()` entries
     ///
     /// # Examples
     ///
@@ -526,7 +541,7 @@ impl<T> CooMat<T> {
     /// - `rows == 0`
     /// - `cols == 0`
     /// - for any entry `(row, col, val)`: `row >= rows` or `col >= cols`
-    /// - `rowind`, `colind` and `values` length differ.
+    /// - `rowind`, `colind` and `values` length differ
     pub fn with_triplets(
         rows: usize,
         cols: usize,
@@ -540,16 +555,21 @@ impl<T> CooMat<T> {
         let mut rowind = rowind.into_iter();
         let mut colind = colind.into_iter();
         let values = values.into_iter();
-        let mut entries = Vec::with_capacity(values.size_hint().0);
+        let capacity = match values.size_hint() {
+            (_, Some(high)) => high,
+            (low, None) => low,
+        };
+        let mut entries = Vec::with_capacity(capacity);
         for value in values {
-            let row = rowind.next().expect("invalid matrix");
-            let col = colind.next().expect("invalid matrix");
+            let row = rowind.next().unwrap();
+            let col = colind.next().unwrap();
             assert!(row < rows);
             assert!(col < cols);
             entries.push((row, col, value));
         }
         assert!(rowind.next().is_none());
         assert!(colind.next().is_none());
+        entries.shrink_to_fit();
         CooMat {
             rows,
             cols,
@@ -562,7 +582,8 @@ impl<T> CooMat<T> {
     ///
     /// The created matrix has following properties:
     /// - the matrix is filled with `values.len()` entries
-    /// - the matrix capacity is at least `values.len()`
+    /// - the matrix allocates memory for at least
+    ///   `max(capacity, values.len())` entries
     ///
     /// # Examples
     ///
@@ -589,7 +610,8 @@ impl<T> CooMat<T> {
     /// - `rows == 0`
     /// - `cols == 0`
     /// - for any entry `(row, col, val)`: `row >= rows` or `col >= cols`
-    /// - `rowind`, `colind` and `values` length differ.
+    /// - `rowind`, `colind` and `values` length differ
+    /// - the allocation size exceeds `isize::MAX` bytes
     pub fn with_capacity_and_triplets(
         rows: usize,
         cols: usize,
@@ -727,11 +749,15 @@ impl<T> CooMat<T> {
     /// matrix.reserve(10);
     /// assert!(matrix.capacity() >= 10);
     /// ```
+    ///
+    /// # Panics
+    ///
+    /// Panics if the new allocation size exceeds `isize::MAX` bytes
     pub fn reserve(&mut self, additional: usize) {
         self.entries.reserve(additional)
     }
 
-    /// Shrink capacity.
+    /// Shrink matrix capacity.
     ///
     /// # Examples
     ///
@@ -768,8 +794,7 @@ impl<T> CooMat<T> {
     ///
     /// # Panics
     ///
-    /// Panics if:
-    /// `len > self.len()`
+    /// Panics if `len > self.len()`
     pub fn truncate(&mut self, len: usize) {
         assert!(len <= self.len());
         self.entries.truncate(len)
@@ -828,11 +853,21 @@ impl<T> CooMat<T> {
 
     /// Push an entry into this matrix.
     ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use alyx::CooMat;
+    /// let mut matrix = CooMat::new(1, 1);
+    /// matrix.push(0, 0, 1.0);
+    /// assert_eq!(matrix.get(0), Some((&0, &0, &1.0)));
+    /// ```
+    ///
     /// # Panics
     ///
     /// Panics if:
     /// - `row >= self.rows`
     /// - `col >= self.cols`
+    /// - the new allocation size exceeds `isize::MAX` bytes
     pub fn push(&mut self, row: usize, col: usize, val: T) {
         assert!(row < self.rows);
         assert!(col < self.cols);
@@ -840,26 +875,85 @@ impl<T> CooMat<T> {
     }
 
     /// Pop entry from the matrix.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use alyx::CooMat;
+    /// let entries = vec![(0, 0, 1.0)];
+    /// let mut matrix = CooMat::with_entries(1, 1, entries);
+    /// assert_eq!(matrix.pop(), Some((0, 0, 1.0)));
+    /// assert_eq!(matrix.pop(), None);
+    /// ```
     pub fn pop(&mut self) -> Option<(usize, usize, T)> {
         self.entries.pop()
     }
 
     /// Insert an entry into the matrix.
     ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use alyx::CooMat;
+    /// let mut matrix = CooMat::new(1, 1);
+    /// matrix.insert(0, 0, 0, 1.0);
+    /// assert_eq!(matrix.get(0), Some((&0, &0, &1.0)));
+    /// ```
+    ///
     /// # Panics
     ///
     /// Panics if:
     /// - `row >= self.rows`
     /// - `col >= self.cols`
-    /// - `index >= self.len()`
+    /// - `index > self.len()`
     pub fn insert(&mut self, index: usize, row: usize, col: usize, val: T) {
         assert!(row < self.rows);
         assert!(col < self.cols);
-        assert!(index < self.len());
+        assert!(index <= self.len());
         self.entries.insert(index, (row, col, val))
     }
 
+    /// Extend matrix entries.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use alyx::CooMat;
+    /// let entries = vec![
+    ///     (0, 0, 1.0),
+    ///     (0, 1, 2.0),
+    ///     (1, 0, 3.0),
+    ///     (1, 1, 4.0),
+    /// ];
+    /// let mut matrix: CooMat<f64> = CooMat::new(2, 2);
+    /// assert_eq!(matrix.len(), 0);
+    /// matrix.extend(entries);
+    /// assert_eq!(matrix.len(), 4);
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// Panics if:
+    /// - `row >= self.rows`
+    /// - `col >= self.cols`
+    pub fn extend<I: IntoIterator<Item = (usize, usize, T)>>(&mut self, iter: I) {
+        for (row, col, val) in iter {
+            assert!(row < self.rows);
+            assert!(col < self.cols);
+            self.entries.push((row, col, val));
+        }
+    }
+
     /// Remove an entry from the matrix.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use alyx::CooMat;
+    /// let entries = vec![(0, 0, 1.0)];
+    /// let mut matrix = CooMat::with_entries(1, 1, entries);
+    /// assert_eq!(matrix.remove(0), (0, 0, 1.0));
+    /// ```
     ///
     /// # Panics
     ///
@@ -869,7 +963,7 @@ impl<T> CooMat<T> {
         self.entries.remove(index)
     }
 
-    /// An iterator visiting all entries of the matrix.
+    /// Returns an iterator visiting all entries of the matrix.
     /// The iterator element type is `(&'a usize, &'a usize, &'a T)`.
     ///
     /// # Examples
@@ -897,7 +991,7 @@ impl<T> CooMat<T> {
         }
     }
 
-    /// An iterator visiting all mutable entries of the matrix.
+    /// Returns an iterator visiting all mutable entries of the matrix.
     /// The iterator element type is `(&'a usize, &'a usize, &'a mut T)`.
     ///
     /// # Examples
@@ -927,31 +1021,6 @@ impl<T> CooMat<T> {
     pub fn iter_mut(&mut self) -> IterMut<T> {
         IterMut {
             inner: self.entries.iter_mut(),
-        }
-    }
-}
-
-impl<T> Extend<(usize, usize, T)> for CooMat<T> {
-    /// Extend matrix entries.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use alyx::CooMat;
-    /// let entries = vec![
-    ///     (0, 0, 1.0),
-    ///     (0, 1, 2.0),
-    ///     (1, 0, 3.0),
-    ///     (1, 1, 4.0),
-    /// ];
-    /// let mut matrix: CooMat<f64> = CooMat::new(2, 2);
-    /// assert_eq!(matrix.len(), 0);
-    /// matrix.extend(entries);
-    /// assert_eq!(matrix.len(), 4);
-    /// ```
-    fn extend<I: IntoIterator<Item = (usize, usize, T)>>(&mut self, iter: I) {
-        for (row, col, val) in iter {
-            self.push(row, col, val);
         }
     }
 }
@@ -1018,7 +1087,7 @@ impl<T> DoubleEndedIterator for IterMut<'_, T> {
 
 impl<T> ExactSizeIterator for IterMut<'_, T> {}
 
-/// An iterator that moves out of a matrix.
+/// An iterator that moves out of a coordinate sparse matrix.
 ///
 /// # Examples
 ///
@@ -1061,7 +1130,13 @@ mod tests {
 
     #[test]
     #[should_panic]
-    fn new_zst() {
+    fn new_zero_size() {
+        CooMat::<f64>::new(0, 0);
+    }
+
+    #[test]
+    #[should_panic]
+    fn new_zero_size_type() {
         CooMat::<()>::new(1, 1);
     }
 
@@ -1095,7 +1170,13 @@ mod tests {
 
     #[test]
     #[should_panic]
-    fn with_capacity_zst() {
+    fn with_capacity_zero_size() {
+        CooMat::<f64>::new(0, 0);
+    }
+
+    #[test]
+    #[should_panic]
+    fn with_capacity_zero_size_type() {
         CooMat::<()>::new(1, 1);
     }
 
@@ -1129,7 +1210,13 @@ mod tests {
 
     #[test]
     #[should_panic]
-    fn with_entries_zst() {
+    fn with_entries_zero_size() {
+        CooMat::<f64>::with_entries(0, 0, vec![]);
+    }
+
+    #[test]
+    #[should_panic]
+    fn with_entries_zero_size_type() {
         CooMat::<()>::with_entries(1, 1, vec![]);
     }
 
@@ -1183,7 +1270,14 @@ mod tests {
 
     #[test]
     #[should_panic]
-    fn with_capacity_and_entries_zst() {
+    fn with_capacity_and_entries_zero_size() {
+        let entries = vec![(0, 0, 1.0)];
+        CooMat::with_capacity_and_entries(0, 0, 1, entries);
+    }
+
+    #[test]
+    #[should_panic]
+    fn with_capacity_and_entries_zero_size_type() {
         let entries = vec![(0, 0, ())];
         CooMat::with_capacity_and_entries(1, 1, 1, entries);
     }
@@ -1238,8 +1332,20 @@ mod tests {
 
     #[test]
     #[should_panic]
-    fn with_triplets_zst() {
-        CooMat::<()>::with_triplets(1, 1, vec![0], vec![0], vec![()]);
+    fn with_triplets_zero_size() {
+        let rowind = vec![0];
+        let colind = vec![0];
+        let values = vec![1.0];
+        CooMat::<f64>::with_triplets(0, 0, rowind, colind, values);
+    }
+
+    #[test]
+    #[should_panic]
+    fn with_triplets_zero_size_type() {
+        let rowind = vec![0];
+        let colind = vec![0];
+        let values = vec![()];
+        CooMat::<()>::with_triplets(1, 1, rowind, colind, values);
     }
 
     #[test]
@@ -1313,7 +1419,16 @@ mod tests {
 
     #[test]
     #[should_panic]
-    fn with_capacity_and_triplets_zst() {
+    fn with_capacity_and_triplets_zero_size() {
+        let rowind = vec![0];
+        let colind = vec![0];
+        let values = vec![1.0];
+        CooMat::with_capacity_and_triplets(0, 0, 1, rowind, colind, values);
+    }
+
+    #[test]
+    #[should_panic]
+    fn with_capacity_and_triplets_zero_size_type() {
         let rowind = vec![0];
         let colind = vec![0];
         let values = vec![()];
@@ -1537,7 +1652,7 @@ mod tests {
     }
 
     #[test]
-    fn length_with_capcity_and_triplets() {
+    fn length_with_capacity_and_triplets() {
         let rowind = vec![];
         let colind = vec![];
         let values: Vec<f64> = vec![];
@@ -1644,13 +1759,49 @@ mod tests {
 
     #[test]
     #[should_panic]
+    fn insert_invalid_row() {
+        let mut matrix = CooMat::new(1, 1);
+        matrix.insert(0, 1, 0, 1.0);
+    }
+
+    #[test]
+    #[should_panic]
+    fn insert_invalid_col() {
+        let mut matrix = CooMat::new(1, 1);
+        matrix.insert(0, 0, 1, 1.0);
+    }
+
+    #[test]
+    #[should_panic]
     fn insert_outofbounds() {
-        let mut matrix: CooMat<f64> = CooMat {
-            rows: 1,
-            cols: 1,
-            entries: vec![],
-        };
+        let mut matrix = CooMat::new(1, 1);
         matrix.insert(1, 0, 0, 1.0);
+    }
+
+    #[test]
+    fn extend() {
+        let mut matrix = CooMat::new(2, 2);
+        assert!(matrix.entries.is_empty());
+        matrix.extend(vec![(0, 0, 1.0), (0, 1, 2.0), (1, 0, 3.0), (1, 1, 4.0)]);
+        assert_eq!(matrix.entries.len(), 4);
+        assert_eq!(matrix.entries.get(0), Some(&(0, 0, 1.0)));
+        assert_eq!(matrix.entries.get(1), Some(&(0, 1, 2.0)));
+        assert_eq!(matrix.entries.get(2), Some(&(1, 0, 3.0)));
+        assert_eq!(matrix.entries.get(3), Some(&(1, 1, 4.0)));
+    }
+
+    #[test]
+    #[should_panic]
+    fn extend_invalid_row() {
+        let mut matrix = CooMat::new(1, 1);
+        matrix.extend(vec![(1, 0, 1.0)]);
+    }
+
+    #[test]
+    #[should_panic]
+    fn extend_invalid_col() {
+        let mut matrix = CooMat::new(1, 1);
+        matrix.extend(vec![(0, 1, 1.0)]);
     }
 
     #[test]
@@ -1668,24 +1819,30 @@ mod tests {
     #[test]
     #[should_panic]
     fn remove_outofbounds() {
-        let mut matrix: CooMat<f64> = CooMat {
-            rows: 1,
-            cols: 1,
-            entries: vec![],
-        };
+        let mut matrix: CooMat<f64> = CooMat::new(1, 1);
         matrix.remove(0);
     }
 
     #[test]
     fn push() {
-        let mut matrix: CooMat<f64> = CooMat {
-            rows: 1,
-            cols: 1,
-            entries: vec![],
-        };
+        let mut matrix = CooMat::new(1, 1);
         matrix.push(0, 0, 1.0);
         assert_eq!(matrix.entries.len(), 1);
         assert_eq!(matrix.entries.get(0), Some(&(0, 0, 1.0)));
+    }
+
+    #[test]
+    #[should_panic]
+    fn push_invalid_row() {
+        let mut matrix = CooMat::new(1, 1);
+        matrix.push(1, 0, 1.0);
+    }
+
+    #[test]
+    #[should_panic]
+    fn push_invalid_col() {
+        let mut matrix = CooMat::new(1, 1);
+        matrix.push(0, 1, 1.0);
     }
 
     #[test]
@@ -1738,22 +1895,6 @@ mod tests {
         assert_eq!(iter.next(), Some((&1, &0, &mut 3.0)));
         assert_eq!(iter.next(), Some((&1, &1, &mut 4.0)));
         assert!(iter.next().is_none());
-    }
-
-    #[test]
-    fn extend() {
-        let mut matrix: CooMat<f64> = CooMat {
-            rows: 2,
-            cols: 2,
-            entries: vec![],
-        };
-        assert!(matrix.entries.is_empty());
-        matrix.extend(vec![(0, 0, 1.0), (0, 1, 2.0), (1, 0, 3.0), (1, 1, 4.0)]);
-        assert_eq!(matrix.entries.len(), 4);
-        assert_eq!(matrix.entries.get(0), Some(&(0, 0, 1.0)));
-        assert_eq!(matrix.entries.get(1), Some(&(0, 1, 2.0)));
-        assert_eq!(matrix.entries.get(2), Some(&(1, 0, 3.0)));
-        assert_eq!(matrix.entries.get(3), Some(&(1, 1, 4.0)));
     }
 
     #[test]

@@ -1,3 +1,10 @@
+# 0.0.2
+## Documentation
+- Extends `CooMat` documentation
+## Fixes
+- `CooMat::insert` : Fix index argument checks
+- `CooMat::extend` : Panics on invalid row/col
+
 # 0.0.1
 
 - Coordinate sparse matrix (`CooMat`)
