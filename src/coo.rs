@@ -1130,7 +1130,13 @@ mod tests {
 
     #[test]
     #[should_panic]
-    fn new_zst() {
+    fn new_zero_size() {
+        CooMat::<f64>::new(0, 0);
+    }
+
+    #[test]
+    #[should_panic]
+    fn new_zero_size_type() {
         CooMat::<()>::new(1, 1);
     }
 
@@ -1164,7 +1170,13 @@ mod tests {
 
     #[test]
     #[should_panic]
-    fn with_capacity_zst() {
+    fn with_capacity_zero_size() {
+        CooMat::<f64>::new(0, 0);
+    }
+
+    #[test]
+    #[should_panic]
+    fn with_capacity_zero_size_type() {
         CooMat::<()>::new(1, 1);
     }
 
@@ -1198,7 +1210,13 @@ mod tests {
 
     #[test]
     #[should_panic]
-    fn with_entries_zst() {
+    fn with_entries_zero_size() {
+        CooMat::<f64>::with_entries(0, 0, vec![]);
+    }
+
+    #[test]
+    #[should_panic]
+    fn with_entries_zero_size_type() {
         CooMat::<()>::with_entries(1, 1, vec![]);
     }
 
@@ -1252,7 +1270,14 @@ mod tests {
 
     #[test]
     #[should_panic]
-    fn with_capacity_and_entries_zst() {
+    fn with_capacity_and_entries_zero_size() {
+        let entries = vec![(0, 0, 1.0)];
+        CooMat::with_capacity_and_entries(0, 0, 1, entries);
+    }
+
+    #[test]
+    #[should_panic]
+    fn with_capacity_and_entries_zero_size_type() {
         let entries = vec![(0, 0, ())];
         CooMat::with_capacity_and_entries(1, 1, 1, entries);
     }
@@ -1307,8 +1332,20 @@ mod tests {
 
     #[test]
     #[should_panic]
-    fn with_triplets_zst() {
-        CooMat::<()>::with_triplets(1, 1, vec![0], vec![0], vec![()]);
+    fn with_triplets_zero_size() {
+        let rowind = vec![0];
+        let colind = vec![0];
+        let values = vec![1.0];
+        CooMat::<f64>::with_triplets(0, 0, rowind, colind, values);
+    }
+
+    #[test]
+    #[should_panic]
+    fn with_triplets_zero_size_type() {
+        let rowind = vec![0];
+        let colind = vec![0];
+        let values = vec![()];
+        CooMat::<()>::with_triplets(1, 1, rowind, colind, values);
     }
 
     #[test]
@@ -1382,7 +1419,16 @@ mod tests {
 
     #[test]
     #[should_panic]
-    fn with_capacity_and_triplets_zst() {
+    fn with_capacity_and_triplets_zero_size() {
+        let rowind = vec![0];
+        let colind = vec![0];
+        let values = vec![1.0];
+        CooMat::with_capacity_and_triplets(0, 0, 1, rowind, colind, values);
+    }
+
+    #[test]
+    #[should_panic]
+    fn with_capacity_and_triplets_zero_size_type() {
         let rowind = vec![0];
         let colind = vec![0];
         let values = vec![()];
@@ -1606,7 +1652,7 @@ mod tests {
     }
 
     #[test]
-    fn length_with_capcity_and_triplets() {
+    fn length_with_capacity_and_triplets() {
         let rowind = vec![];
         let colind = vec![];
         let values: Vec<f64> = vec![];
@@ -1713,13 +1759,49 @@ mod tests {
 
     #[test]
     #[should_panic]
+    fn insert_invalid_row() {
+        let mut matrix = CooMat::new(1, 1);
+        matrix.insert(0, 1, 0, 1.0);
+    }
+
+    #[test]
+    #[should_panic]
+    fn insert_invalid_col() {
+        let mut matrix = CooMat::new(1, 1);
+        matrix.insert(0, 0, 1, 1.0);
+    }
+
+    #[test]
+    #[should_panic]
     fn insert_outofbounds() {
-        let mut matrix: CooMat<f64> = CooMat {
-            rows: 1,
-            cols: 1,
-            entries: vec![],
-        };
+        let mut matrix = CooMat::new(1, 1);
         matrix.insert(1, 0, 0, 1.0);
+    }
+
+    #[test]
+    fn extend() {
+        let mut matrix = CooMat::new(2, 2);
+        assert!(matrix.entries.is_empty());
+        matrix.extend(vec![(0, 0, 1.0), (0, 1, 2.0), (1, 0, 3.0), (1, 1, 4.0)]);
+        assert_eq!(matrix.entries.len(), 4);
+        assert_eq!(matrix.entries.get(0), Some(&(0, 0, 1.0)));
+        assert_eq!(matrix.entries.get(1), Some(&(0, 1, 2.0)));
+        assert_eq!(matrix.entries.get(2), Some(&(1, 0, 3.0)));
+        assert_eq!(matrix.entries.get(3), Some(&(1, 1, 4.0)));
+    }
+
+    #[test]
+    #[should_panic]
+    fn extend_invalid_row() {
+        let mut matrix = CooMat::new(1, 1);
+        matrix.extend(vec![(1, 0, 1.0)]);
+    }
+
+    #[test]
+    #[should_panic]
+    fn extend_invalid_col() {
+        let mut matrix = CooMat::new(1, 1);
+        matrix.extend(vec![(0, 1, 1.0)]);
     }
 
     #[test]
@@ -1737,24 +1819,30 @@ mod tests {
     #[test]
     #[should_panic]
     fn remove_outofbounds() {
-        let mut matrix: CooMat<f64> = CooMat {
-            rows: 1,
-            cols: 1,
-            entries: vec![],
-        };
+        let mut matrix: CooMat<f64> = CooMat::new(1, 1);
         matrix.remove(0);
     }
 
     #[test]
     fn push() {
-        let mut matrix: CooMat<f64> = CooMat {
-            rows: 1,
-            cols: 1,
-            entries: vec![],
-        };
+        let mut matrix = CooMat::new(1, 1);
         matrix.push(0, 0, 1.0);
         assert_eq!(matrix.entries.len(), 1);
         assert_eq!(matrix.entries.get(0), Some(&(0, 0, 1.0)));
+    }
+
+    #[test]
+    #[should_panic]
+    fn push_invalid_row() {
+        let mut matrix = CooMat::new(1, 1);
+        matrix.push(1, 0, 1.0);
+    }
+
+    #[test]
+    #[should_panic]
+    fn push_invalid_col() {
+        let mut matrix = CooMat::new(1, 1);
+        matrix.push(0, 1, 1.0);
     }
 
     #[test]
@@ -1807,22 +1895,6 @@ mod tests {
         assert_eq!(iter.next(), Some((&1, &0, &mut 3.0)));
         assert_eq!(iter.next(), Some((&1, &1, &mut 4.0)));
         assert!(iter.next().is_none());
-    }
-
-    #[test]
-    fn extend() {
-        let mut matrix: CooMat<f64> = CooMat {
-            rows: 2,
-            cols: 2,
-            entries: vec![],
-        };
-        assert!(matrix.entries.is_empty());
-        matrix.extend(vec![(0, 0, 1.0), (0, 1, 2.0), (1, 0, 3.0), (1, 1, 4.0)]);
-        assert_eq!(matrix.entries.len(), 4);
-        assert_eq!(matrix.entries.get(0), Some(&(0, 0, 1.0)));
-        assert_eq!(matrix.entries.get(1), Some(&(0, 1, 2.0)));
-        assert_eq!(matrix.entries.get(2), Some(&(1, 0, 3.0)));
-        assert_eq!(matrix.entries.get(3), Some(&(1, 1, 4.0)));
     }
 
     #[test]
